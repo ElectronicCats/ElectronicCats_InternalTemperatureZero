@@ -13,7 +13,7 @@ TemperatureZero	KEYWORD1
 #######################################
 
 init	KEYWORD2
-readInternalTemperature KEYWORD2
+readInternalTemperature    KEYWORD2
 
 #######################################
 # Constants (LITERAL1)
