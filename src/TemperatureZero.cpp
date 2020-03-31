@@ -13,7 +13,6 @@ TemperatureZero::TemperatureZero() {
 void TemperatureZero::init()
 {
   SYSCTRL->VREF.reg |= SYSCTRL_VREF_TSEN; // Enable the temperature sensor  
-
   while( ADC->STATUS.bit.SYNCBUSY == 1 ); // Wait for synchronization of registers between the clock domains
 }
 
