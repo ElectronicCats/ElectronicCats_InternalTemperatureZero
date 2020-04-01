@@ -26,7 +26,7 @@ void TemperatureZero::wakeup() {
 }
 
 // Set the sample averaging as the internal sensor is somewhat noisy
-// Default value is TZ_SAMPLES_64 which takes approx 26 ms at 48 Mhz clock
+// Default value is TZ_AVERAGING_64 which takes approx 26 ms at 48 Mhz clock
 void TemperatureZero::setAveraging(uint8_t averaging) {
   _averaging = averaging;
 }
