@@ -30,6 +30,8 @@ jobs:
         arduino-boards-fqbn:
           - arduino:samd:nano_33_iot
           - arduino:samd:arduino_zero_native
+          - arduino:samd:mkrwan1300
+          - arduino:samd:mkrzero
 
         # Specify parameters for each board.
         # Parameters can be: platform-url, examples-exclude and examples-build-properties
@@ -38,6 +40,8 @@ jobs:
         include:
           - arduino-boards-fqbn: arduino:samd:nano_33_iot
           - arduino-boards-fqbn: arduino:samd:arduino_zero_native
+          - arduino-boards-fqbn: arduino:samd:mkrwan1300
+          - arduino-boards-fqbn: arduino:samd:mkrzero
 
       # Do not cancel all jobs / architectures if one job fails
       fail-fast: false
