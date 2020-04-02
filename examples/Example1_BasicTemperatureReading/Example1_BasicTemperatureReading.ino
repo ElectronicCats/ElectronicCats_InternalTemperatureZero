@@ -18,14 +18,14 @@ TemperatureZero TempZero = TemperatureZero();
 
 void setup() {
   // put your setup code here, to run once:
-  SerialUSB.begin(9600);
+  Serial.begin(9600);
   TempZero.init();
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
   float temperature = TempZero.readInternalTemperature();
-  SerialUSB.print("Internal Temperature is:");
-  SerialUSB.println(temperature);
+  Serial.print("Internal Temperature is : ");
+  Serial.println(temperature);
   delay(500);
 }
