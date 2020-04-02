@@ -9,10 +9,11 @@ void setup() {
 }
 
 // The internal temperature sensor is a bit noisy. This means that it benefits from
-// taking an average over a number of samples. This can be done easily using the following
+// taking an average over a number of samples. Per default this is already setup,
+// using 64 samples per measurement. However, this could be changed sing the following
 // call:
 //
-// TempZero.setAveraging(TZ_AVERAGING_64);
+// TempZero.setAveraging(TZ_AVERAGING_256);
 //
 // Let's evaluate the effect of varying the averaging mode from 1 to 256 samples
 // This influences the measurement speed, as well as the variance in the results
