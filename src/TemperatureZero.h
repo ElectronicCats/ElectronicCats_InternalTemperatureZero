@@ -37,12 +37,16 @@ class TemperatureZero
     uint16_t readInternalTemperatureRaw();
     float raw2temp (uint16_t adcReading);
     float readInternalTemperature();
+#ifdef TZ_WITH_DEBUG_CODE
     void enableDebugging(Stream &debugPort);
     void disableDebugging(void); 
+#endif
   
   private:
+#ifdef TZ_WITH_DEBUG_CODE
     bool _debug;
     Stream * _debugSerial;
+#endif
     uint8_t _averaging;
 
     float _roomTemperature;

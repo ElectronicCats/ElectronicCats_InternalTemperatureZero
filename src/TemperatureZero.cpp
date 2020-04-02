@@ -11,7 +11,9 @@ TemperatureZero::TemperatureZero() {
 }
 
 void TemperatureZero::init() {
+#ifdef TZ_WITH_DEBUG_CODE
   _debug = false;
+#endif
   _averaging = TZ_AVERAGING_64; // on 48Mhz takes approx 26 ms
   _isUserCalEnabled = false;
   getFactoryCalibration();
@@ -37,6 +39,7 @@ float TemperatureZero::readInternalTemperature() {
    return raw2temp(adcReading);
 }
 
+#ifdef TZ_WITH_DEBUG_CODE
 // To follow along, the detailed temperature calculation, enable library debugging
 void TemperatureZero::enableDebugging(Stream &debugPort) {
   _debugSerial = &debugPort;
@@ -47,6 +50,7 @@ void TemperatureZero::enableDebugging(Stream &debugPort) {
 void TemperatureZero::disableDebugging(void) {
   _debug = false;
 }
+#endif
 
 #define INT1V_DIVIDER_1000                1000.0
 #define ADC_12BIT_FULL_SCALE_VALUE_FLOAT  4095.0
@@ -72,6 +76,7 @@ void TemperatureZero::getFactoryCalibration() {
   // Combining the temperature dependent 1v reference with the ADC readings
   _roomVoltageCompensated = ((float)_roomReading * _roomInt1vRef)/ADC_12BIT_FULL_SCALE_VALUE_FLOAT;
   _hotVoltageCompensated = ((float)_hotReading * _hotInt1vRef)/ADC_12BIT_FULL_SCALE_VALUE_FLOAT;
+#ifdef TZ_WITH_DEBUG_CODE
   if (_debug) {
     _debugSerial->println(F("\n+++ Factory calibration parameters:"));
     _debugSerial->print(F("Room Temperature : "));
@@ -95,6 +100,7 @@ void TemperatureZero::getFactoryCalibration() {
     _debugSerial->print(F("Hot Reading compensated  : "));
     _debugSerial->println(_hotVoltageCompensated, 4);
   }
+#endif
 }
 
 // Extra safe decimal to fractional conversion
@@ -241,6 +247,7 @@ float TemperatureZero::raw2temp (uint16_t adcReading) {
   if (_isUserCalEnabled) {
     result = (refinedTemp - _userCalOffsetCorrection) * _userCalGainCorrection;
   }
+  #ifdef TZ_WITH_DEBUG_CODE
   if (_debug) {
     _debugSerial->println(F("\n+++ Temperature calculation:"));
     _debugSerial->print(F("raw adc reading : "));
@@ -266,6 +273,7 @@ float TemperatureZero::raw2temp (uint16_t adcReading) {
       _debugSerial->println(F("Disabled"));
     }
   }
+#endif  
   return result;
 }
 
