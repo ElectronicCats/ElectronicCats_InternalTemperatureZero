@@ -48,9 +48,6 @@ void TemperatureZero::disableDebugging(void) {
   _debug = false;
 }
 
-#define INT1V_DIVIDER_1000                1000.0
-#define ADC_12BIT_FULL_SCALE_VALUE_FLOAT  4095.0
-
 // Get all factory calibration parameters and process them
 // This includes both the temperature sensor calibration as well as the 1v reference calibration
 void TemperatureZero::getFactoryCalibration() {
@@ -67,11 +64,11 @@ void TemperatureZero::getFactoryCalibration() {
   // Factory internal 1V voltage reference readings at both room and hot temperatures
   int8_t roomInt1vRefRaw = (int8_t)((*(uint32_t*)FUSES_ROOM_INT1V_VAL_ADDR & FUSES_ROOM_INT1V_VAL_Msk) >> FUSES_ROOM_INT1V_VAL_Pos);
   int8_t hotInt1vRefRaw  = (int8_t)((*(uint32_t*)FUSES_HOT_INT1V_VAL_ADDR & FUSES_HOT_INT1V_VAL_Msk) >> FUSES_HOT_INT1V_VAL_Pos);
-  _roomInt1vRef = 1 - ((float)roomInt1vRefRaw/INT1V_DIVIDER_1000);
-  _hotInt1vRef  = 1 - ((float)hotInt1vRefRaw/INT1V_DIVIDER_1000);
+  _roomInt1vRef = 1 - ((float)roomInt1vRefRaw/1000.0);
+  _hotInt1vRef  = 1 - ((float)hotInt1vRefRaw/1000.0);
   // Combining the temperature dependent 1v reference with the ADC readings
-  _roomVoltageCompensated = ((float)_roomReading * _roomInt1vRef)/ADC_12BIT_FULL_SCALE_VALUE_FLOAT;
-  _hotVoltageCompensated = ((float)_hotReading * _hotInt1vRef)/ADC_12BIT_FULL_SCALE_VALUE_FLOAT;
+  _roomVoltageCompensated = ((float)_roomReading * _roomInt1vRef)/4095.0;
+  _hotVoltageCompensated = ((float)_hotReading * _hotInt1vRef)/4095.0;
   if (_debug) {
     _debugSerial->println(F("\n+++ Factory calibration parameters:"));
     _debugSerial->print(F("Room Temperature : "));
@@ -229,12 +226,12 @@ uint16_t TemperatureZero::readInternalTemperatureRaw() {
 // uses factory calibration data and, only when set and enabled, user calibration data
 float TemperatureZero::raw2temp (uint16_t adcReading) {
   // Get course temperature first, in order to estimate the internal 1V reference voltage level at this temperature
-  float meaurementVoltage = ((float)adcReading)/ADC_12BIT_FULL_SCALE_VALUE_FLOAT;
+  float meaurementVoltage = ((float)adcReading)/4095.0;
   float coarse_temp = _roomTemperature + (((_hotTemperature - _roomTemperature)/(_hotVoltageCompensated - _roomVoltageCompensated)) * (meaurementVoltage - _roomVoltageCompensated));
   // Estimate the reference voltage using the course temperature
   float ref1VAtMeasurement = _roomInt1vRef + (((_hotInt1vRef - _roomInt1vRef) * (coarse_temp - _roomTemperature))/(_hotTemperature - _roomTemperature));
   // Now first compensate the raw adc reading using the estimation of the 1V reference output at current temperature 
-  float measureVoltageCompensated = ((float)adcReading * ref1VAtMeasurement)/ADC_12BIT_FULL_SCALE_VALUE_FLOAT;
+  float measureVoltageCompensated = ((float)adcReading * ref1VAtMeasurement)/4095.0;
   // Repeat the temperature interpolation using the compensated measurement voltage
   float refinedTemp = _roomTemperature + (((_hotTemperature - _roomTemperature)/(_hotVoltageCompensated - _roomVoltageCompensated)) * (measureVoltageCompensated - _roomVoltageCompensated));
   float result = refinedTemp;
