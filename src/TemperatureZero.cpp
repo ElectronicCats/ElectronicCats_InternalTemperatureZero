@@ -118,8 +118,12 @@ void TemperatureZero::setUserCalibration(float userCalGainCorrection,
   _isUserCalEnabled = isEnabled;
 }
 
-void TemperatureZero::enableUserCalibration(bool isEnabled) {
-  _isUserCalEnabled = isEnabled;
+void TemperatureZero::enableUserCalibration() {
+  _isUserCalEnabled = true;
+}
+
+void TemperatureZero::disableUserCalibration() {
+  _isUserCalEnabled = false;
 }
 
 // Get raw 12 bit adc reading

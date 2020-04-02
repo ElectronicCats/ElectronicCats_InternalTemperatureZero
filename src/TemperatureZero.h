@@ -32,7 +32,8 @@ class TemperatureZero
     void setUserCalibration(float userCalGainCorrection,
                             float userCalOffsetCorrection,
                             bool isEnabled);
-    void enableUserCalibration(bool isEnabled);
+    void enableUserCalibration();
+    void disableUserCalibration();
     uint16_t readInternalTemperatureRaw();
     float raw2temp (uint16_t adcReading);
     float readInternalTemperature();
