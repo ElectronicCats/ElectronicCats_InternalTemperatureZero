@@ -8,6 +8,16 @@ void setup() {
   TempZero.init();
 }
 
+// The internal temperature sensor is a bit noisy. This means that it benefits from
+// taking an average over a number of samples. This can be done easily using the following
+// call:
+//
+// TempZero.setAveraging(TZ_AVERAGING_64);
+//
+// Let's evaluate the effect of varying the averaging mode from 1 to 256 samples
+// This influences the measurement speed, as well as the variance in the results
+// Below example measures the effectiveness of each averaging mode.
+
 #define NR_AVG_MODES 9
 #define MEASUREMENTS_PER_MODE 100
 
@@ -36,13 +46,9 @@ struct {
 void loop() {
   // put your main code here, to run repeatedly:
 
-  // Let's evaluate the effect of varying the averaging from 1 to 256 samples
-  // This influences the measurement speed as well as the variance in the results
-  // As you can see the default of 64 samples is a compromise
-
   Serial.print("\nAveraging mode evaluation (");
   Serial.print(MEASUREMENTS_PER_MODE);
-  Serial.println("measurements per mode):");
+  Serial.println(" measurements per mode):");
 
   for (int i=0; i<NR_AVG_MODES; i++) {
     TempZero.setAveraging(averaging_mode[i]);

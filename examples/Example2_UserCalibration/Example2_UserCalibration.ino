@@ -7,8 +7,8 @@ void setup() {
   Serial.begin(9600);
   TempZero.init();
   
-  // Correct the output using a 2-point measurement. That is a measurement at a known cold 
-  // and a known hot temperature. Ideally at the edges of the range-of-interest.
+  // Correct the output using a 2-point measurement. That is, a measurement at a known cold 
+  // and at a known hot temperature. Ideally, at the edges of the range-of-interest.
   // In order to provide a clear example, we'll setup a case where the sensor mistakenly shifts
   // down by one degree and halves the temperature:
   //    Real cold temp = 10 degres, TempZero indicates (10 - 1) / 2 = 4.5
@@ -17,11 +17,12 @@ void setup() {
   TempZero.setUserCalibration2P(10.0, 4.5, 100.0, 49.5, false);
 
   // As an alternative to the setup of a 2-point calibration measurement,
-  // we could create two temperature curves in a spreadsheet. One curve of a known 
-  // temperature, from a 'trusted' temperature sensor, and one for the measured 
-  // TempZero temperature. Then, using a spreadsheet program, we create a 'linear fit'
-  // between both curves. Search for the function LINEST. This fit yields two numbers,
-  // A and B. These numbers are the best fit for:
+  // we could create a table with two temperature columns in a spreadsheet. One column for 
+  // a known temperature, from a 'trusted' temperature sensor. and one for the measured 
+  // TempZero temperature. Ideally this table would cover the range of interest evenly.
+  // Then, using a spreadsheet program, we could create a 'linear fit' between both columns. 
+  // Search for the function LINEST. This fit yields two numbers: A and B. These numbers 
+  // are the best values for using the following formula:
   //    <Real temperature> = A * <measured TempZero temp> + B
   // These A and B values could be used directly in TempZero as follows:
   // TempZero.setUserCalibration(A, -B/A);
