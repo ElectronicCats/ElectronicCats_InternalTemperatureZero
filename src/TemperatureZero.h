@@ -37,8 +37,12 @@ class TemperatureZero
     uint16_t readInternalTemperatureRaw();
     float raw2temp (uint16_t adcReading);
     float readInternalTemperature();
+    void enableDebugging(Stream &debugPort);
+    void disableDebugging(void); 
   
   private:
+    bool _debug;
+    Stream * _debugSerial;
     uint8_t _averaging;
 
     float _roomTemperature;
@@ -55,7 +59,7 @@ class TemperatureZero
     float _userCalOffsetCorrection;
     
     void getFactoryCalibration();
-    float convert_dec_to_frac(uint8_t);
+    float convertDecToFrac(uint8_t);
 };
 
 #endif

@@ -7,12 +7,11 @@
 #include "Arduino.h"
 #include "TemperatureZero.h"
 
-#undef TZ_DEBUG
-
 TemperatureZero::TemperatureZero() {
 }
 
 void TemperatureZero::init() {
+  _debug = false;
   _averaging = TZ_AVERAGING_64; // on 48Mhz takes approx 26 ms
   _isUserCalEnabled = false;
   getFactoryCalibration();
@@ -38,6 +37,17 @@ float TemperatureZero::readInternalTemperature() {
    return raw2temp(adcReading);
 }
 
+// To follow along, the detailed temperature calculation, enable library debugging
+void TemperatureZero::enableDebugging(Stream &debugPort) {
+  _debugSerial = &debugPort;
+  _debug = true;
+}
+
+// Disable library debugging
+void TemperatureZero::disableDebugging(void) {
+  _debug = false;
+}
+
 #define INT1V_DIVIDER_1000                1000.0
 #define ADC_12BIT_FULL_SCALE_VALUE_FLOAT  4095.0
 
@@ -47,12 +57,12 @@ void TemperatureZero::getFactoryCalibration() {
    // Factory room temperature readings
   uint8_t roomInteger = (*(uint32_t*)FUSES_ROOM_TEMP_VAL_INT_ADDR & FUSES_ROOM_TEMP_VAL_INT_Msk) >> FUSES_ROOM_TEMP_VAL_INT_Pos;
   uint8_t roomDecimal = (*(uint32_t*)FUSES_ROOM_TEMP_VAL_DEC_ADDR & FUSES_ROOM_TEMP_VAL_DEC_Msk) >> FUSES_ROOM_TEMP_VAL_DEC_Pos;
-  _roomTemperature = roomInteger + convert_dec_to_frac(roomDecimal);
+  _roomTemperature = roomInteger + convertDecToFrac(roomDecimal);
   _roomReading = ((*(uint32_t*)FUSES_ROOM_ADC_VAL_ADDR & FUSES_ROOM_ADC_VAL_Msk) >> FUSES_ROOM_ADC_VAL_Pos);
    // Factory hot temperature readings
   uint8_t hotInteger = (*(uint32_t*)FUSES_HOT_TEMP_VAL_INT_ADDR & FUSES_HOT_TEMP_VAL_INT_Msk) >> FUSES_HOT_TEMP_VAL_INT_Pos;
   uint8_t hotDecimal = (*(uint32_t*)FUSES_HOT_TEMP_VAL_DEC_ADDR & FUSES_HOT_TEMP_VAL_DEC_Msk) >> FUSES_HOT_TEMP_VAL_DEC_Pos;
-  _hotTemperature = hotInteger + convert_dec_to_frac(hotDecimal);
+  _hotTemperature = hotInteger + convertDecToFrac(hotDecimal);
   _hotReading = ((*(uint32_t*)FUSES_HOT_ADC_VAL_ADDR & FUSES_HOT_ADC_VAL_Msk) >> FUSES_HOT_ADC_VAL_Pos);
   // Factory internal 1V voltage reference readings at both room and hot temperatures
   int8_t roomInt1vRefRaw = (int8_t)((*(uint32_t*)FUSES_ROOM_INT1V_VAL_ADDR & FUSES_ROOM_INT1V_VAL_Msk) >> FUSES_ROOM_INT1V_VAL_Pos);
@@ -62,33 +72,33 @@ void TemperatureZero::getFactoryCalibration() {
   // Combining the temperature dependent 1v reference with the ADC readings
   _roomVoltageCompensated = ((float)_roomReading * _roomInt1vRef)/ADC_12BIT_FULL_SCALE_VALUE_FLOAT;
   _hotVoltageCompensated = ((float)_hotReading * _hotInt1vRef)/ADC_12BIT_FULL_SCALE_VALUE_FLOAT;
-#ifdef TZ_DEBUG
-    Serial.println(F("\n+++ Factory calibration parameters:"));
-    Serial.print(F("Room Temperature : "));
-    Serial.println(_roomTemperature, 1);
-    Serial.print(F("Hot Temperature  : "));
-    Serial.println(_hotTemperature, 1);
-    Serial.print(F("Room Reading     : "));
-    Serial.println(_roomReading);
-    Serial.print(F("Hot Reading      : "));
-    Serial.println(_hotReading);
-    Serial.print(F("Room Voltage ref raw / interpreted : "));
-    Serial.print(roomInt1vRefRaw);
-    Serial.print(F(" / "));
-    Serial.println(_roomInt1vRef, 4);
-    Serial.print(F("Hot Voltage ref raw / interpreted  : "));
-    Serial.print(hotInt1vRefRaw);
-    Serial.print(F(" / "));
-    Serial.println(_hotInt1vRef, 4);
-    Serial.print(F("Room Reading compensated : "));
-    Serial.println(_roomVoltageCompensated, 4);
-    Serial.print(F("Hot Reading compensated  : "));
-    Serial.println(_hotVoltageCompensated, 4);
-#endif
+  if (_debug) {
+    _debugSerial->println(F("\n+++ Factory calibration parameters:"));
+    _debugSerial->print(F("Room Temperature : "));
+    _debugSerial->println(_roomTemperature, 1);
+    _debugSerial->print(F("Hot Temperature  : "));
+    _debugSerial->println(_hotTemperature, 1);
+    _debugSerial->print(F("Room Reading     : "));
+    _debugSerial->println(_roomReading);
+    _debugSerial->print(F("Hot Reading      : "));
+    _debugSerial->println(_hotReading);
+    _debugSerial->print(F("Room Voltage ref raw / interpreted : "));
+    _debugSerial->print(roomInt1vRefRaw);
+    _debugSerial->print(F(" / "));
+    _debugSerial->println(_roomInt1vRef, 4);
+    _debugSerial->print(F("Hot Voltage ref raw / interpreted  : "));
+    _debugSerial->print(hotInt1vRefRaw);
+    _debugSerial->print(F(" / "));
+    _debugSerial->println(_hotInt1vRef, 4);
+    _debugSerial->print(F("Room Reading compensated : "));
+    _debugSerial->println(_roomVoltageCompensated, 4);
+    _debugSerial->print(F("Hot Reading compensated  : "));
+    _debugSerial->println(_hotVoltageCompensated, 4);
+  }
 }
 
 // Extra safe decimal to fractional conversion
-float TemperatureZero::convert_dec_to_frac(uint8_t val) {
+float TemperatureZero::convertDecToFrac(uint8_t val) {
   if (val < 10) {
     return ((float)val/10.0);
   } else if (val <100) {
@@ -231,31 +241,31 @@ float TemperatureZero::raw2temp (uint16_t adcReading) {
   if (_isUserCalEnabled) {
     result = (refinedTemp - _userCalOffsetCorrection) * _userCalGainCorrection;
   }
-#ifdef TZ_DEBUG
-    Serial.println(F("\n+++ Temperature calculation:"));
-    Serial.print(F("raw adc reading : "));
-    Serial.println(adcReading);
-    Serial.print(F("Course temperature : "));
-    Serial.println(coarse_temp, 1);
-    Serial.print(F("Estimated 1V ref @Course temperature : "));
-    Serial.println(ref1VAtMeasurement, 4);
-    Serial.print(F("Temperature compensated measurement voltage : "));
-    Serial.println(measureVoltageCompensated, 4);
-    Serial.print(F("Refined temperature : "));
-    Serial.println(refinedTemp, 1);
-    Serial.print(F("User calibration post processing is : "));
+  if (_debug) {
+    _debugSerial->println(F("\n+++ Temperature calculation:"));
+    _debugSerial->print(F("raw adc reading : "));
+    _debugSerial->println(adcReading);
+    _debugSerial->print(F("Course temperature : "));
+    _debugSerial->println(coarse_temp, 1);
+    _debugSerial->print(F("Estimated 1V ref @Course temperature : "));
+    _debugSerial->println(ref1VAtMeasurement, 4);
+    _debugSerial->print(F("Temperature compensated measurement voltage : "));
+    _debugSerial->println(measureVoltageCompensated, 4);
+    _debugSerial->print(F("Refined temperature : "));
+    _debugSerial->println(refinedTemp, 1);
+    _debugSerial->print(F("User calibration post processing is : "));
     if (_isUserCalEnabled) {
-      Serial.println(F("Enabled"));
-      Serial.print(F("User calibration offset correction : "));
-      Serial.println(_userCalOffsetCorrection, 4);
-      Serial.print(F("User calibration gain correction : "));
-      Serial.println(_userCalGainCorrection, 4);
-      Serial.print(F("User calibration corrected temperature = "));
-      Serial.println(result, 2);
+      _debugSerial->println(F("Enabled"));
+      _debugSerial->print(F("User calibration offset correction : "));
+      _debugSerial->println(_userCalOffsetCorrection, 4);
+      _debugSerial->print(F("User calibration gain correction : "));
+      _debugSerial->println(_userCalGainCorrection, 4);
+      _debugSerial->print(F("User calibration corrected temperature = "));
+      _debugSerial->println(result, 2);
     } else {
-      Serial.println(F("Disabled"));
+      _debugSerial->println(F("Disabled"));
     }
-#endif
+  }
   return result;
 }
 
