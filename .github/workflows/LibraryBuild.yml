@@ -57,3 +57,4 @@ jobs:
         uses: ArminJo/arduino-test-compile@master
         with:
           arduino-board-fqbn: ${{ matrix.arduino-boards-fqbn }}
+          required-libraries: RTCZero

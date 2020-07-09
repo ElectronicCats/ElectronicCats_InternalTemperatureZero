@@ -14,17 +14,18 @@ TemperatureZero	KEYWORD1
 
 init	KEYWORD2
 readInternalTemperature	KEYWORD2
-wakeup  KEYWORD2
-setAveraging    KEYWORD2
-setUserCalibration2P    KEYWORD2
-setUserCalibration  KEYWORD2
-enableUserCalibration   KEYWORD2
-disableUserCalibration  KEYWORD2
-readInternalTemperatureRaw  KEYWORD2
-raw2temp    KEYWORD2
-readInternalTemperature KEYWORD2
-enableDebugging KEYWORD2
-disableDebugging    KEYWORD2
+wakeup	KEYWORD2
+disable	KEYWORD2
+setAveraging	KEYWORD2
+setUserCalibration2P	KEYWORD2
+setUserCalibration	KEYWORD2
+enableUserCalibration	KEYWORD2
+disableUserCalibration	KEYWORD2
+readInternalTemperatureRaw	KEYWORD2
+raw2temp	KEYWORD2
+readInternalTemperature	KEYWORD2
+enableDebugging	KEYWORD2
+disableDebugging	KEYWORD2
 
 #######################################
 # Constants (LITERAL1)
