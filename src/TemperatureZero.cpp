@@ -26,6 +26,11 @@ void TemperatureZero::wakeup() {
   while( ADC->STATUS.bit.SYNCBUSY == 1 ); // Wait for synchronization of registers between the clock domains
 }
 
+void TemperatureZero::disable() {
+  SYSCTRL->VREF.reg &= ~SYSCTRL_VREF_TSEN; // Disable the temperature sensor  
+  while( ADC->STATUS.bit.SYNCBUSY == 1 );  // Wait for synchronization of registers between the clock domains
+}
+
 // Set the sample averaging as the internal sensor is somewhat noisy
 // Default value is TZ_AVERAGING_64 which takes approx 26 ms at 48 Mhz clock
 void TemperatureZero::setAveraging(uint8_t averaging) {

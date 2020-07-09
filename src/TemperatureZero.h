@@ -23,6 +23,7 @@ class TemperatureZero
     TemperatureZero();
     void init();
     void wakeup();
+    void disable();
     void setAveraging(uint8_t averaging);
     void setUserCalibration2P(float userCalColdGroundTruth,
                             float userCalColdMeasurement,
