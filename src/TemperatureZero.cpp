@@ -1,7 +1,10 @@
 /*
-  TemperatureZero.h - Arduino library for internal temperature of the family SAMD -
+  TemperatureZero.h - Arduino library for internal temperature of the family SAMD21 and SAMD51 -
   Copyright (c) 2018 Electronic Cats.  All right reserved.
   Based in the work of Mitchell Pontague https://github.com/arduino/ArduinoCore-samd/pull/277
+  Based in the work of @manitou48 for SAMD51 https://github.com/manitou48/samd51/blob/master/m4temp.ino 
+  and CircuitPython https://github.com/adafruit/circuitpython/blob/master/ports/atmel-samd/common-hal/microcontroller/Processor.c
+  Thanks!
 */
 
 #include "Arduino.h"
