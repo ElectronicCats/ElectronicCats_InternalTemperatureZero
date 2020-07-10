@@ -44,6 +44,8 @@ jobs:
           - arduino-boards-fqbn: arduino:samd:arduino_zero_native
           - arduino-boards-fqbn: arduino:samd:mkrwan1300
           - arduino-boards-fqbn: arduino:samd:mkrzero
+          - arduino-boards-fqbn: adafruit:samd:adafruit_itsybitsy_m4
+            examples-exclude: Example4_BasicTemperatureReadingSleep
 
       # Do not cancel all jobs / architectures if one job fails
       fail-fast: false
