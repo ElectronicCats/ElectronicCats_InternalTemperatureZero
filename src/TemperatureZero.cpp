@@ -22,20 +22,24 @@ void TemperatureZero::init() {
   #endif
 }
 
-#ifdef SAMD21
+
 // After sleeping, the temperature sensor seems disabled. So, let's re-enable it.
 void TemperatureZero::wakeup() {
+  #ifdef SAMD21
   SYSCTRL->VREF.reg |= SYSCTRL_VREF_TSEN; // Enable the temperature sensor  
   while( ADC->STATUS.bit.SYNCBUSY == 1 ); // Wait for synchronization of registers between the clock domains
+  #endif
 }
-#endif
 
-#ifdef SAMD21
+
+
 void TemperatureZero::disable() {
+  #ifdef SAMD21
   SYSCTRL->VREF.reg &= ~SYSCTRL_VREF_TSEN; // Disable the temperature sensor  
   while( ADC->STATUS.bit.SYNCBUSY == 1 );  // Wait for synchronization of registers between the clock domains
+  #endif
 }
-#endif
+
 
 // Set the sample averaging as the internal sensor is somewhat noisy
 // Default value is TZ_AVERAGING_64 which takes approx 26 ms at 48 Mhz clock
@@ -72,10 +76,11 @@ void TemperatureZero::disableDebugging(void) {
 #define INT1V_DIVIDER_1000                1000.0
 #define ADC_12BIT_FULL_SCALE_VALUE_FLOAT  4095.0
 
-#ifdef SAMD21 // M0
+
 // Get all factory calibration parameters and process them
 // This includes both the temperature sensor calibration as well as the 1v reference calibration
 void TemperatureZero::getFactoryCalibration() {
+  #ifdef SAMD21 // M0
    // Factory room temperature readings
   uint8_t roomInteger = (*(uint32_t*)FUSES_ROOM_TEMP_VAL_INT_ADDR & FUSES_ROOM_TEMP_VAL_INT_Msk) >> FUSES_ROOM_TEMP_VAL_INT_Pos;
   uint8_t roomDecimal = (*(uint32_t*)FUSES_ROOM_TEMP_VAL_DEC_ADDR & FUSES_ROOM_TEMP_VAL_DEC_Msk) >> FUSES_ROOM_TEMP_VAL_DEC_Pos;
@@ -119,8 +124,9 @@ void TemperatureZero::getFactoryCalibration() {
     _debugSerial->println(_hotVoltageCompensated, 4);
   }
 #endif
-}
 #endif
+}
+
 
 // Extra safe decimal to fractional conversion
 float TemperatureZero::convertDecToFrac(uint8_t val) {
