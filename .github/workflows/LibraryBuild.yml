@@ -63,3 +63,4 @@ jobs:
           arduino-board-fqbn: ${{ matrix.arduino-boards-fqbn }}
           platform-default-url: ${{ env.PLATFORM_DEFAULT_URL }}
           required-libraries: RTCZero
+          examples-exclude: ${{ matrix.examples-exclude }}
