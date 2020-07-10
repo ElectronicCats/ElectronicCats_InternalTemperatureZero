@@ -16,20 +16,26 @@ void TemperatureZero::init() {
 #endif
   _averaging = TZ_AVERAGING_64; // on 48Mhz takes approx 26 ms
   _isUserCalEnabled = false;
+  #ifdef SAMD21
   getFactoryCalibration();
   wakeup();
+  #endif
 }
 
+#ifdef SAMD21
 // After sleeping, the temperature sensor seems disabled. So, let's re-enable it.
 void TemperatureZero::wakeup() {
   SYSCTRL->VREF.reg |= SYSCTRL_VREF_TSEN; // Enable the temperature sensor  
   while( ADC->STATUS.bit.SYNCBUSY == 1 ); // Wait for synchronization of registers between the clock domains
 }
+#endif
 
+#ifdef SAMD21
 void TemperatureZero::disable() {
   SYSCTRL->VREF.reg &= ~SYSCTRL_VREF_TSEN; // Disable the temperature sensor  
   while( ADC->STATUS.bit.SYNCBUSY == 1 );  // Wait for synchronization of registers between the clock domains
 }
+#endif
 
 // Set the sample averaging as the internal sensor is somewhat noisy
 // Default value is TZ_AVERAGING_64 which takes approx 26 ms at 48 Mhz clock
@@ -40,11 +46,11 @@ void TemperatureZero::setAveraging(uint8_t averaging) {
 // Reads temperature using internal ADC channel
 // Datasheet chapter 37.10.8 - Temperature Sensor Characteristics
 float TemperatureZero::readInternalTemperature() {
-  #if defined (__SAMD21__) // M0
+  #ifdef SAMD21 // M0
    uint16_t adcReading = readInternalTemperatureRaw();
    return raw2temp(adcReading);
    #endif
-   #if defined (__SAMD51__) // M4
+   #ifdef SAMD51 // M4
    return readInternalTemperatureRaw();
    #endif
 
@@ -66,6 +72,7 @@ void TemperatureZero::disableDebugging(void) {
 #define INT1V_DIVIDER_1000                1000.0
 #define ADC_12BIT_FULL_SCALE_VALUE_FLOAT  4095.0
 
+#ifdef SAMD21 // M0
 // Get all factory calibration parameters and process them
 // This includes both the temperature sensor calibration as well as the 1v reference calibration
 void TemperatureZero::getFactoryCalibration() {
@@ -113,6 +120,7 @@ void TemperatureZero::getFactoryCalibration() {
   }
 #endif
 }
+#endif
 
 // Extra safe decimal to fractional conversion
 float TemperatureZero::convertDecToFrac(uint8_t val) {
@@ -156,7 +164,7 @@ void TemperatureZero::disableUserCalibration() {
 // Get raw 12 bit adc reading
 uint16_t TemperatureZero::readInternalTemperatureRaw() {
 
-#if defined (__SAMD21__) // M0
+#ifdef SAMD21 // M0
   // Save ADC settings
   uint16_t oldReadResolution = ADC->CTRLB.reg;
   uint16_t oldSampling = ADC->SAMPCTRL.reg;
@@ -245,7 +253,7 @@ uint16_t TemperatureZero::readInternalTemperatureRaw() {
   return adcReading;
   #endif
 
-  #if defined (__SAMD51__) // M4
+ #ifdef SAMD51 // M4
   // enable and read 2 ADC temp sensors, 12-bit res
   volatile uint16_t ptat;
   volatile uint16_t ctat;
@@ -297,7 +305,7 @@ uint16_t TemperatureZero::readInternalTemperatureRaw() {
   #endif
 }
 
-#if defined (__SAMD21__) // M0
+#ifdef SAMD21 // M0
 // Convert raw 12 bit adc reading into temperature float.
 // uses factory calibration data and, only when set and enabled, user calibration data
 float TemperatureZero::raw2temp (uint16_t adcReading) {
@@ -345,7 +353,7 @@ float TemperatureZero::raw2temp (uint16_t adcReading) {
 }
 #endif
 
-#if defined (__SAMD51__) // M4
+#ifdef SAMD51 // M4
 float TemperatureZero::raw2temp(uint16_t TP, uint16_t TC) {
   uint32_t TLI = (*(uint32_t *)FUSES_ROOM_TEMP_VAL_INT_ADDR & FUSES_ROOM_TEMP_VAL_INT_Msk) >> FUSES_ROOM_TEMP_VAL_INT_Pos;
   uint32_t TLD = (*(uint32_t *)FUSES_ROOM_TEMP_VAL_DEC_ADDR & FUSES_ROOM_TEMP_VAL_DEC_Msk) >> FUSES_ROOM_TEMP_VAL_DEC_Pos;
