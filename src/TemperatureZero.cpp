@@ -40,8 +40,14 @@ void TemperatureZero::setAveraging(uint8_t averaging) {
 // Reads temperature using internal ADC channel
 // Datasheet chapter 37.10.8 - Temperature Sensor Characteristics
 float TemperatureZero::readInternalTemperature() {
+  #if defined (__SAMD21__) // M0
    uint16_t adcReading = readInternalTemperatureRaw();
    return raw2temp(adcReading);
+   #endif
+   #if defined (__SAMD51__) // M4
+   return readInternalTemperatureRaw();
+   #endif
+
 }
 
 #ifdef TZ_WITH_DEBUG_CODE
@@ -149,6 +155,8 @@ void TemperatureZero::disableUserCalibration() {
 
 // Get raw 12 bit adc reading
 uint16_t TemperatureZero::readInternalTemperatureRaw() {
+
+#if defined (__SAMD21__) // M0
   // Save ADC settings
   uint16_t oldReadResolution = ADC->CTRLB.reg;
   uint16_t oldSampling = ADC->SAMPCTRL.reg;
@@ -233,9 +241,63 @@ uint16_t TemperatureZero::readInternalTemperatureRaw() {
   ADC->INPUTCTRL.bit.GAIN = oldReferenceGain;
   ADC->REFCTRL.bit.REFSEL = oldReferenceSelect;
   while (ADC->STATUS.bit.SYNCBUSY == 1); 
+
   return adcReading;
+  #endif
+
+  #if defined (__SAMD51__) // M4
+  // enable and read 2 ADC temp sensors, 12-bit res
+  volatile uint16_t ptat;
+  volatile uint16_t ctat;
+  SUPC->VREF.reg |= SUPC_VREF_TSEN | SUPC_VREF_ONDEMAND;
+  ADC0->CTRLB.bit.RESSEL = ADC_CTRLB_RESSEL_12BIT_Val;
+  while (ADC0->SYNCBUSY.reg & ADC_SYNCBUSY_CTRLB); //wait for sync
+  while ( ADC0->SYNCBUSY.reg & ADC_SYNCBUSY_INPUTCTRL ); //wait for sync
+  ADC0->INPUTCTRL.bit.MUXPOS = ADC_INPUTCTRL_MUXPOS_PTAT;
+  while ( ADC0->SYNCBUSY.reg & ADC_SYNCBUSY_ENABLE ); //wait for sync
+  ADC0->CTRLA.bit.ENABLE = 0x01;             // Enable ADC
+
+  // Start conversion
+  while ( ADC0->SYNCBUSY.reg & ADC_SYNCBUSY_ENABLE ); //wait for sync
+
+  ADC0->SWTRIG.bit.START = 1;
+
+  // Clear the Data Ready flag
+  ADC0->INTFLAG.reg = ADC_INTFLAG_RESRDY;
+
+  // Start conversion again, since The first conversion after the reference is changed must not be used.
+  ADC0->SWTRIG.bit.START = 1;
+
+  while (ADC0->INTFLAG.bit.RESRDY == 0);   // Waiting for conversion to complete
+  ptat = ADC0->RESULT.reg;
+
+  while ( ADC0->SYNCBUSY.reg & ADC_SYNCBUSY_INPUTCTRL ); //wait for sync
+  ADC0->INPUTCTRL.bit.MUXPOS = ADC_INPUTCTRL_MUXPOS_CTAT;
+  // Start conversion
+  while ( ADC0->SYNCBUSY.reg & ADC_SYNCBUSY_ENABLE ); //wait for sync
+
+  ADC0->SWTRIG.bit.START = 1;
+
+  // Clear the Data Ready flag
+  ADC0->INTFLAG.reg = ADC_INTFLAG_RESRDY;
+
+  // Start conversion again, since The first conversion after the reference is changed must not be used.
+  ADC0->SWTRIG.bit.START = 1;
+
+  while (ADC0->INTFLAG.bit.RESRDY == 0);   // Waiting for conversion to complete
+  ctat = ADC0->RESULT.reg;
+
+
+  while ( ADC0->SYNCBUSY.reg & ADC_SYNCBUSY_ENABLE ); //wait for sync
+  ADC0->CTRLA.bit.ENABLE = 0x00;             // Disable ADC
+  while ( ADC0->SYNCBUSY.reg & ADC_SYNCBUSY_ENABLE ); //wait for sync
+  
+  return raw2temp(ptat, ctat);
+  
+  #endif
 }
 
+#if defined (__SAMD21__) // M0
 // Convert raw 12 bit adc reading into temperature float.
 // uses factory calibration data and, only when set and enabled, user calibration data
 float TemperatureZero::raw2temp (uint16_t adcReading) {
@@ -281,4 +343,25 @@ float TemperatureZero::raw2temp (uint16_t adcReading) {
 #endif  
   return result;
 }
+#endif
 
+#if defined (__SAMD51__) // M4
+float TemperatureZero::raw2temp(uint16_t TP, uint16_t TC) {
+  uint32_t TLI = (*(uint32_t *)FUSES_ROOM_TEMP_VAL_INT_ADDR & FUSES_ROOM_TEMP_VAL_INT_Msk) >> FUSES_ROOM_TEMP_VAL_INT_Pos;
+  uint32_t TLD = (*(uint32_t *)FUSES_ROOM_TEMP_VAL_DEC_ADDR & FUSES_ROOM_TEMP_VAL_DEC_Msk) >> FUSES_ROOM_TEMP_VAL_DEC_Pos;
+  float TL = TLI + convert_dec_to_frac(TLD);
+
+  uint32_t THI = (*(uint32_t *)FUSES_HOT_TEMP_VAL_INT_ADDR & FUSES_HOT_TEMP_VAL_INT_Msk) >> FUSES_HOT_TEMP_VAL_INT_Pos;
+  uint32_t THD = (*(uint32_t *)FUSES_HOT_TEMP_VAL_DEC_ADDR & FUSES_HOT_TEMP_VAL_DEC_Msk) >> FUSES_HOT_TEMP_VAL_DEC_Pos;
+  float TH = THI + convert_dec_to_frac(THD);
+
+  uint16_t VPL = (*(uint32_t *)FUSES_ROOM_ADC_VAL_PTAT_ADDR & FUSES_ROOM_ADC_VAL_PTAT_Msk) >> FUSES_ROOM_ADC_VAL_PTAT_Pos;
+  uint16_t VPH = (*(uint32_t *)FUSES_HOT_ADC_VAL_PTAT_ADDR & FUSES_HOT_ADC_VAL_PTAT_Msk) >> FUSES_HOT_ADC_VAL_PTAT_Pos;
+
+  uint16_t VCL = (*(uint32_t *)FUSES_ROOM_ADC_VAL_CTAT_ADDR & FUSES_ROOM_ADC_VAL_CTAT_Msk) >> FUSES_ROOM_ADC_VAL_CTAT_Pos;
+  uint16_t VCH = (*(uint32_t *)FUSES_HOT_ADC_VAL_CTAT_ADDR & FUSES_HOT_ADC_VAL_CTAT_Msk) >> FUSES_HOT_ADC_VAL_CTAT_Pos;
+
+  // From SAMD51 datasheet: section 45.6.3.1 (page 1327).
+  return (TL * VPH * TC - VPL * TH * TC - TL * VCH * TP + TH * VCL * TP) / (VCL * TP - VCH * TP - VPL * TC + VPH * TC);
+}
+#endif
