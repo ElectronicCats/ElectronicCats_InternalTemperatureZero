@@ -4,7 +4,7 @@
 
 # ElectronicCats Internal Temperature Zero
 
-Arduino library for internal temperature of the family SAMD
+Arduino library for internal temperature of the family SAMD21 and SAMD51
 
 ### Quick Installing
 
@@ -24,7 +24,7 @@ For more info, see https://www.arduino.cc/en/Guide/Libraries
 
 ## Features of this version
 
-- Support for SAMD21
+- Support for SAMD21 and SAMD51
 
 ### Maintainer
 
