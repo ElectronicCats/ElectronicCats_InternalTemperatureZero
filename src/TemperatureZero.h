@@ -40,6 +40,7 @@ class TemperatureZero
     void disableUserCalibration();
     uint16_t readInternalTemperatureRaw();
     float raw2temp (uint16_t adcReading);
+    float raw2temp(uint16_t TP, uint16_t TC);
     float readInternalTemperature();
 #ifdef TZ_WITH_DEBUG_CODE
     void enableDebugging(Stream &debugPort);
