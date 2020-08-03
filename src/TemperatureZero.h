@@ -39,8 +39,12 @@ class TemperatureZero
     void enableUserCalibration();
     void disableUserCalibration();
     uint16_t readInternalTemperatureRaw();
+#ifdef SAMD21
     float raw2temp (uint16_t adcReading);
+#endif
+#ifdef SAMD51
     float raw2temp(uint16_t TP, uint16_t TC);
+#endif
     float readInternalTemperature();
 #ifdef TZ_WITH_DEBUG_CODE
     void enableDebugging(Stream &debugPort);
@@ -62,6 +66,17 @@ class TemperatureZero
     float _hotInt1vRef;
     float _roomVoltageCompensated;
     float _hotVoltageCompensated;
+
+    uint32_t TLI;
+    uint32_t TLD;
+    float TL;
+    uint32_t THI;
+    uint32_t THD;
+    float TH;
+    uint16_t VPL;
+    uint16_t VPH;
+    uint16_t VCL;
+    uint16_t VCH;
 
     bool _isUserCalEnabled;
     float _userCalGainCorrection;
