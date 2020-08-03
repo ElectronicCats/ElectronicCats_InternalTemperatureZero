@@ -19,10 +19,8 @@ void TemperatureZero::init() {
 #endif
   _averaging = TZ_AVERAGING_64; // on 48Mhz takes approx 26 ms
   _isUserCalEnabled = false;
-  #ifdef SAMD21
   getFactoryCalibration();
   wakeup();
-  #endif
 }
 
 
@@ -30,6 +28,10 @@ void TemperatureZero::init() {
 void TemperatureZero::wakeup() {
   #ifdef SAMD21
   SYSCTRL->VREF.reg |= SYSCTRL_VREF_TSEN; // Enable the temperature sensor  
+  while( ADC->STATUS.bit.SYNCBUSY == 1 ); // Wait for synchronization of registers between the clock domains
+  #endif
+  #ifdef SAMD51
+  SUPC->VREF.reg |= SUPC_VREF_TSEN | SUPC_VREF_ONDEMAND; // Enable the temperature sensor  
   while( ADC->STATUS.bit.SYNCBUSY == 1 ); // Wait for synchronization of registers between the clock domains
   #endif
 }
@@ -40,6 +42,10 @@ void TemperatureZero::disable() {
   #ifdef SAMD21
   SYSCTRL->VREF.reg &= ~SYSCTRL_VREF_TSEN; // Disable the temperature sensor  
   while( ADC->STATUS.bit.SYNCBUSY == 1 );  // Wait for synchronization of registers between the clock domains
+  #endif
+  #ifdef SAMD51
+  SUPC->VREF.reg &= ~SUPC_VREF_TSEN | SUPC_VREF_ONDEMAND; // Disable the temperature sensor  
+  while( ADC->STATUS.bit.SYNCBUSY == 1 ); // Wait for synchronization of registers between the clock domains
   #endif
 }
 
