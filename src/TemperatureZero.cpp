@@ -288,7 +288,6 @@ uint16_t TemperatureZero::readInternalTemperatureRaw() {
   // enable and read 2 ADC temp sensors, 12-bit res
   volatile uint16_t ptat;
   volatile uint16_t ctat;
-  SUPC->VREF.reg |= SUPC_VREF_TSEN | SUPC_VREF_ONDEMAND;
   ADC0->CTRLB.bit.RESSEL = ADC_CTRLB_RESSEL_12BIT_Val;
   while (ADC0->SYNCBUSY.reg & ADC_SYNCBUSY_CTRLB); //wait for sync
   while ( ADC0->SYNCBUSY.reg & ADC_SYNCBUSY_INPUTCTRL ); //wait for sync
