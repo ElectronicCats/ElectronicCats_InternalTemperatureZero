@@ -42,7 +42,7 @@ class TemperatureZero
 #ifdef SAMD21
     float raw2temp (uint16_t adcReading);
 #endif
-#ifdef SAMD51
+#ifdef __SAMD51__
     float raw2temp(uint16_t TP, uint16_t TC);
 #endif
     float readInternalTemperature();

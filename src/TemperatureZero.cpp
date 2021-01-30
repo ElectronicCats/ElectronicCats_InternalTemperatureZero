@@ -10,6 +10,93 @@
 #include "Arduino.h"
 #include "TemperatureZero.h"
 
+#ifdef __SAMD51__ // M4
+// m4 SAMD51 chip temperature sensor on ADC
+// Decimal to fraction conversion. (adapted from ASF sample).
+//#define NVMCTRL_TEMP_LOG              (0x00800100)  // ref pg 59
+#define NVMCTRL_TEMP_LOG NVMCTRL_TEMP_LOG_W0
+
+static float convert_dec_to_frac(uint8_t val) {
+  float float_val = (float)val;
+  if (val < 10) {
+    return (float_val / 10.0);
+  } else if (val < 100) {
+    return (float_val / 100.0);
+  } else {
+    return (float_val / 1000.0);
+  }
+}
+#endif
+
+#ifdef SAMD21 // M0
+// Convert raw 12 bit adc reading into temperature float.
+// uses factory calibration data and, only when set and enabled, user calibration data
+float TemperatureZero::raw2temp (uint16_t adcReading) {
+  // Get course temperature first, in order to estimate the internal 1V reference voltage level at this temperature
+  float meaurementVoltage = ((float)adcReading)/ADC_12BIT_FULL_SCALE_VALUE_FLOAT;
+  float coarse_temp = _roomTemperature + (((_hotTemperature - _roomTemperature)/(_hotVoltageCompensated - _roomVoltageCompensated)) * (meaurementVoltage - _roomVoltageCompensated));
+  // Estimate the reference voltage using the course temperature
+  float ref1VAtMeasurement = _roomInt1vRef + (((_hotInt1vRef - _roomInt1vRef) * (coarse_temp - _roomTemperature))/(_hotTemperature - _roomTemperature));
+  // Now first compensate the raw adc reading using the estimation of the 1V reference output at current temperature 
+  float measureVoltageCompensated = ((float)adcReading * ref1VAtMeasurement)/ADC_12BIT_FULL_SCALE_VALUE_FLOAT;
+  // Repeat the temperature interpolation using the compensated measurement voltage
+  float refinedTemp = _roomTemperature + (((_hotTemperature - _roomTemperature)/(_hotVoltageCompensated - _roomVoltageCompensated)) * (measureVoltageCompensated - _roomVoltageCompensated));
+  float result = refinedTemp;
+  if (_isUserCalEnabled) {
+    result = (refinedTemp - _userCalOffsetCorrection) * _userCalGainCorrection;
+  }
+  #ifdef TZ_WITH_DEBUG_CODE
+  if (_debug) {
+    _debugSerial->println(F("\n+++ Temperature calculation:"));
+    _debugSerial->print(F("raw adc reading : "));
+    _debugSerial->println(adcReading);
+    _debugSerial->print(F("Course temperature : "));
+    _debugSerial->println(coarse_temp, 1);
+    _debugSerial->print(F("Estimated 1V ref @Course temperature : "));
+    _debugSerial->println(ref1VAtMeasurement, 4);
+    _debugSerial->print(F("Temperature compensated measurement voltage : "));
+    _debugSerial->println(measureVoltageCompensated, 4);
+    _debugSerial->print(F("Refined temperature : "));
+    _debugSerial->println(refinedTemp, 1);
+    _debugSerial->print(F("User calibration post processing is : "));
+    if (_isUserCalEnabled) {
+      _debugSerial->println(F("Enabled"));
+      _debugSerial->print(F("User calibration offset correction : "));
+      _debugSerial->println(_userCalOffsetCorrection, 4);
+      _debugSerial->print(F("User calibration gain correction : "));
+      _debugSerial->println(_userCalGainCorrection, 4);
+      _debugSerial->print(F("User calibration corrected temperature = "));
+      _debugSerial->println(result, 2);
+    } else {
+      _debugSerial->println(F("Disabled"));
+    }
+  }
+#endif  
+  return result;
+}
+#endif
+
+#ifdef __SAMD51__ // M4
+float TemperatureZero::raw2temp(uint16_t TP, uint16_t TC) {
+    uint32_t TLI = (*(uint32_t *)FUSES_ROOM_TEMP_VAL_INT_ADDR & FUSES_ROOM_TEMP_VAL_INT_Msk) >> FUSES_ROOM_TEMP_VAL_INT_Pos;
+    uint32_t TLD = (*(uint32_t *)FUSES_ROOM_TEMP_VAL_DEC_ADDR & FUSES_ROOM_TEMP_VAL_DEC_Msk) >> FUSES_ROOM_TEMP_VAL_DEC_Pos;
+    float TL = TLI + convert_dec_to_frac(TLD);
+
+    uint32_t THI = (*(uint32_t *)FUSES_HOT_TEMP_VAL_INT_ADDR & FUSES_HOT_TEMP_VAL_INT_Msk) >> FUSES_HOT_TEMP_VAL_INT_Pos;
+    uint32_t THD = (*(uint32_t *)FUSES_HOT_TEMP_VAL_DEC_ADDR & FUSES_HOT_TEMP_VAL_DEC_Msk) >> FUSES_HOT_TEMP_VAL_DEC_Pos;
+    float TH = THI + convert_dec_to_frac(THD);
+
+    uint16_t VPL = (*(uint32_t *)FUSES_ROOM_ADC_VAL_PTAT_ADDR & FUSES_ROOM_ADC_VAL_PTAT_Msk) >> FUSES_ROOM_ADC_VAL_PTAT_Pos;
+    uint16_t VPH = (*(uint32_t *)FUSES_HOT_ADC_VAL_PTAT_ADDR & FUSES_HOT_ADC_VAL_PTAT_Msk) >> FUSES_HOT_ADC_VAL_PTAT_Pos;
+
+    uint16_t VCL = (*(uint32_t *)FUSES_ROOM_ADC_VAL_CTAT_ADDR & FUSES_ROOM_ADC_VAL_CTAT_Msk) >> FUSES_ROOM_ADC_VAL_CTAT_Pos;
+    uint16_t VCH = (*(uint32_t *)FUSES_HOT_ADC_VAL_CTAT_ADDR & FUSES_HOT_ADC_VAL_CTAT_Msk) >> FUSES_HOT_ADC_VAL_CTAT_Pos;
+
+    // From SAMD51 datasheet: section 45.6.3.1 (page 1327).
+    return (TL*VPH*TC - VPL*TH*TC - TL*VCH*TP + TH*VCL*TP) / (VCL*TP - VCH*TP - VPL*TC + VPH*TC);
+}
+#endif
+
 TemperatureZero::TemperatureZero() {
 }
 
@@ -30,9 +117,9 @@ void TemperatureZero::wakeup() {
   SYSCTRL->VREF.reg |= SYSCTRL_VREF_TSEN; // Enable the temperature sensor  
   while( ADC->STATUS.bit.SYNCBUSY == 1 ); // Wait for synchronization of registers between the clock domains
   #endif
-  #ifdef SAMD51
+  #ifdef __SAMD51__
   SUPC->VREF.reg |= SUPC_VREF_TSEN | SUPC_VREF_ONDEMAND; // Enable the temperature sensor  
-  while( ADC->STATUS.bit.SYNCBUSY == 1 ); // Wait for synchronization of registers between the clock domains
+  while( ADC0->SYNCBUSY.reg == 1 ); // Wait for synchronization of registers between the clock domains
   #endif
 }
 
@@ -43,9 +130,9 @@ void TemperatureZero::disable() {
   SYSCTRL->VREF.reg &= ~SYSCTRL_VREF_TSEN; // Disable the temperature sensor  
   while( ADC->STATUS.bit.SYNCBUSY == 1 );  // Wait for synchronization of registers between the clock domains
   #endif
-  #ifdef SAMD51
+  #ifdef __SAMD51__
   SUPC->VREF.reg &= ~SUPC_VREF_TSEN | SUPC_VREF_ONDEMAND; // Disable the temperature sensor  
-  while( ADC->STATUS.bit.SYNCBUSY == 1 ); // Wait for synchronization of registers between the clock domains
+  while( ADC0->SYNCBUSY.reg == 1 ); // Wait for synchronization of registers between the clock domains
   #endif
 }
 
@@ -63,10 +150,9 @@ float TemperatureZero::readInternalTemperature() {
    uint16_t adcReading = readInternalTemperatureRaw();
    return raw2temp(adcReading);
    #endif
-   #ifdef SAMD51 // M4
+   #ifdef __SAMD51__ // M4
    return readInternalTemperatureRaw();
    #endif
-
 }
 
 #ifdef TZ_WITH_DEBUG_CODE
@@ -109,7 +195,7 @@ void TemperatureZero::getFactoryCalibration() {
   _roomVoltageCompensated = ((float)_roomReading * _roomInt1vRef)/ADC_12BIT_FULL_SCALE_VALUE_FLOAT;
   _hotVoltageCompensated = ((float)_hotReading * _hotInt1vRef)/ADC_12BIT_FULL_SCALE_VALUE_FLOAT;
   #endif
-  #ifdef SAMD51
+  #ifdef __SAMD51__
   uint32_t TLI = (*(uint32_t *)FUSES_ROOM_TEMP_VAL_INT_ADDR & FUSES_ROOM_TEMP_VAL_INT_Msk) >> FUSES_ROOM_TEMP_VAL_INT_Pos;
   uint32_t TLD = (*(uint32_t *)FUSES_ROOM_TEMP_VAL_DEC_ADDR & FUSES_ROOM_TEMP_VAL_DEC_Msk) >> FUSES_ROOM_TEMP_VAL_DEC_Pos;
   float TL = TLI + convert_dec_to_frac(TLD);
@@ -120,7 +206,6 @@ void TemperatureZero::getFactoryCalibration() {
 
   uint16_t VPL = (*(uint32_t *)FUSES_ROOM_ADC_VAL_PTAT_ADDR & FUSES_ROOM_ADC_VAL_PTAT_Msk) >> FUSES_ROOM_ADC_VAL_PTAT_Pos;
   uint16_t VPH = (*(uint32_t *)FUSES_HOT_ADC_VAL_PTAT_ADDR & FUSES_HOT_ADC_VAL_PTAT_Msk) >> FUSES_HOT_ADC_VAL_PTAT_Pos;
-
   uint16_t VCL = (*(uint32_t *)FUSES_ROOM_ADC_VAL_CTAT_ADDR & FUSES_ROOM_ADC_VAL_CTAT_Msk) >> FUSES_ROOM_ADC_VAL_CTAT_Pos;
   uint16_t VCH = (*(uint32_t *)FUSES_HOT_ADC_VAL_CTAT_ADDR & FUSES_HOT_ADC_VAL_CTAT_Msk) >> FUSES_HOT_ADC_VAL_CTAT_Pos;
 
@@ -284,7 +369,7 @@ uint16_t TemperatureZero::readInternalTemperatureRaw() {
   return adcReading;
   #endif
 
- #ifdef SAMD51 // M4
+ #ifdef __SAMD51__ // M4
   // enable and read 2 ADC temp sensors, 12-bit res
   volatile uint16_t ptat;
   volatile uint16_t ctat;
@@ -330,78 +415,9 @@ uint16_t TemperatureZero::readInternalTemperatureRaw() {
 
   while ( ADC0->SYNCBUSY.reg & ADC_SYNCBUSY_ENABLE ); //wait for sync
   ADC0->CTRLA.bit.ENABLE = 0x00;             // Disable ADC
-  while ( ADC0->SYNCBUSY.reg & ADC_SYNCBUSY_ENABLE ); //wait for sync
-  
+  while ( ADC0->SYNCBUSY.reg & ADC_SYNCBUSY_ENABLE ); //wait for sync 
+
   return raw2temp(ptat, ctat);
   
   #endif
 }
-
-#ifdef SAMD21 // M0
-// Convert raw 12 bit adc reading into temperature float.
-// uses factory calibration data and, only when set and enabled, user calibration data
-float TemperatureZero::raw2temp (uint16_t adcReading) {
-  // Get course temperature first, in order to estimate the internal 1V reference voltage level at this temperature
-  float meaurementVoltage = ((float)adcReading)/ADC_12BIT_FULL_SCALE_VALUE_FLOAT;
-  float coarse_temp = _roomTemperature + (((_hotTemperature - _roomTemperature)/(_hotVoltageCompensated - _roomVoltageCompensated)) * (meaurementVoltage - _roomVoltageCompensated));
-  // Estimate the reference voltage using the course temperature
-  float ref1VAtMeasurement = _roomInt1vRef + (((_hotInt1vRef - _roomInt1vRef) * (coarse_temp - _roomTemperature))/(_hotTemperature - _roomTemperature));
-  // Now first compensate the raw adc reading using the estimation of the 1V reference output at current temperature 
-  float measureVoltageCompensated = ((float)adcReading * ref1VAtMeasurement)/ADC_12BIT_FULL_SCALE_VALUE_FLOAT;
-  // Repeat the temperature interpolation using the compensated measurement voltage
-  float refinedTemp = _roomTemperature + (((_hotTemperature - _roomTemperature)/(_hotVoltageCompensated - _roomVoltageCompensated)) * (measureVoltageCompensated - _roomVoltageCompensated));
-  float result = refinedTemp;
-  if (_isUserCalEnabled) {
-    result = (refinedTemp - _userCalOffsetCorrection) * _userCalGainCorrection;
-  }
-  #ifdef TZ_WITH_DEBUG_CODE
-  if (_debug) {
-    _debugSerial->println(F("\n+++ Temperature calculation:"));
-    _debugSerial->print(F("raw adc reading : "));
-    _debugSerial->println(adcReading);
-    _debugSerial->print(F("Course temperature : "));
-    _debugSerial->println(coarse_temp, 1);
-    _debugSerial->print(F("Estimated 1V ref @Course temperature : "));
-    _debugSerial->println(ref1VAtMeasurement, 4);
-    _debugSerial->print(F("Temperature compensated measurement voltage : "));
-    _debugSerial->println(measureVoltageCompensated, 4);
-    _debugSerial->print(F("Refined temperature : "));
-    _debugSerial->println(refinedTemp, 1);
-    _debugSerial->print(F("User calibration post processing is : "));
-    if (_isUserCalEnabled) {
-      _debugSerial->println(F("Enabled"));
-      _debugSerial->print(F("User calibration offset correction : "));
-      _debugSerial->println(_userCalOffsetCorrection, 4);
-      _debugSerial->print(F("User calibration gain correction : "));
-      _debugSerial->println(_userCalGainCorrection, 4);
-      _debugSerial->print(F("User calibration corrected temperature = "));
-      _debugSerial->println(result, 2);
-    } else {
-      _debugSerial->println(F("Disabled"));
-    }
-  }
-#endif  
-  return result;
-}
-#endif
-
-#ifdef SAMD51 // M4
-float TemperatureZero::raw2temp(uint16_t TP, uint16_t TC) {
-    uint32_t TLI = (*(uint32_t *)FUSES_ROOM_TEMP_VAL_INT_ADDR & FUSES_ROOM_TEMP_VAL_INT_Msk) >> FUSES_ROOM_TEMP_VAL_INT_Pos;
-    uint32_t TLD = (*(uint32_t *)FUSES_ROOM_TEMP_VAL_DEC_ADDR & FUSES_ROOM_TEMP_VAL_DEC_Msk) >> FUSES_ROOM_TEMP_VAL_DEC_Pos;
-    float TL = TLI + convert_dec_to_frac(TLD);
-
-    uint32_t THI = (*(uint32_t *)FUSES_HOT_TEMP_VAL_INT_ADDR & FUSES_HOT_TEMP_VAL_INT_Msk) >> FUSES_HOT_TEMP_VAL_INT_Pos;
-    uint32_t THD = (*(uint32_t *)FUSES_HOT_TEMP_VAL_DEC_ADDR & FUSES_HOT_TEMP_VAL_DEC_Msk) >> FUSES_HOT_TEMP_VAL_DEC_Pos;
-    float TH = THI + convert_dec_to_frac(THD);
-
-    uint16_t VPL = (*(uint32_t *)FUSES_ROOM_ADC_VAL_PTAT_ADDR & FUSES_ROOM_ADC_VAL_PTAT_Msk) >> FUSES_ROOM_ADC_VAL_PTAT_Pos;
-    uint16_t VPH = (*(uint32_t *)FUSES_HOT_ADC_VAL_PTAT_ADDR & FUSES_HOT_ADC_VAL_PTAT_Msk) >> FUSES_HOT_ADC_VAL_PTAT_Pos;
-
-    uint16_t VCL = (*(uint32_t *)FUSES_ROOM_ADC_VAL_CTAT_ADDR & FUSES_ROOM_ADC_VAL_CTAT_Msk) >> FUSES_ROOM_ADC_VAL_CTAT_Pos;
-    uint16_t VCH = (*(uint32_t *)FUSES_HOT_ADC_VAL_CTAT_ADDR & FUSES_HOT_ADC_VAL_CTAT_Msk) >> FUSES_HOT_ADC_VAL_CTAT_Pos;
-
-    // From SAMD51 datasheet: section 45.6.3.1 (page 1327).
-    return (TL*VPH*TC - VPL*TH*TC - TL*VCH*TP + TH*VCL*TP) / (VCL*TP - VCH*TP - VPL*TC + VPH*TC);
-}
-#endif
