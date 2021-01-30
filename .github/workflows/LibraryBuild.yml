@@ -14,7 +14,8 @@ jobs:
     name: ${{ matrix.arduino-boards-fqbn }} - test compiling examples
 
     runs-on: ubuntu-latest # I picked Ubuntu to use shell scripts.
-
+    env:
+      PLATFORM_DEFAULT_URL: https://adafruit.github.io/arduino-board-index/package_adafruit_index.json
     strategy:
       matrix:
         # The matrix will produce one job for each configuration parameter of type `arduino-boards-fqbn`
@@ -32,6 +33,7 @@ jobs:
           - arduino:samd:arduino_zero_native
           - arduino:samd:mkrwan1300
           - arduino:samd:mkrzero
+          - adafruit:samd:adafruit_itsybitsy_m4
 
         # Specify parameters for each board.
         # Parameters can be: platform-url, examples-exclude and examples-build-properties
@@ -42,6 +44,8 @@ jobs:
           - arduino-boards-fqbn: arduino:samd:arduino_zero_native
           - arduino-boards-fqbn: arduino:samd:mkrwan1300
           - arduino-boards-fqbn: arduino:samd:mkrzero
+          - arduino-boards-fqbn: adafruit:samd:adafruit_itsybitsy_m4
+            sketches-exclude: Example4_BasicTemperatureReadingSleep 
 
       # Do not cancel all jobs / architectures if one job fails
       fail-fast: false
@@ -57,4 +61,6 @@ jobs:
         uses: ArminJo/arduino-test-compile@master
         with:
           arduino-board-fqbn: ${{ matrix.arduino-boards-fqbn }}
+          platform-default-url: ${{ env.PLATFORM_DEFAULT_URL }}
           required-libraries: RTCZero
+          sketches-exclude: ${{ matrix.sketches-exclude }}
