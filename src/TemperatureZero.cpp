@@ -28,7 +28,7 @@ static float convert_dec_to_frac(uint8_t val) {
 }
 #endif
 
-#ifdef SAMD21 // M0
+#ifdef _SAMD21_ // M0
 // Convert raw 12 bit adc reading into temperature float.
 // uses factory calibration data and, only when set and enabled, user calibration data
 float TemperatureZero::raw2temp (uint16_t adcReading) {
@@ -113,7 +113,7 @@ void TemperatureZero::init() {
 
 // After sleeping, the temperature sensor seems disabled. So, let's re-enable it.
 void TemperatureZero::wakeup() {
-  #ifdef SAMD21
+  #ifdef _SAMD21_
   SYSCTRL->VREF.reg |= SYSCTRL_VREF_TSEN; // Enable the temperature sensor  
   while( ADC->STATUS.bit.SYNCBUSY == 1 ); // Wait for synchronization of registers between the clock domains
   #endif
@@ -126,7 +126,7 @@ void TemperatureZero::wakeup() {
 
 
 void TemperatureZero::disable() {
-  #ifdef SAMD21
+  #ifdef _SAMD21_
   SYSCTRL->VREF.reg &= ~SYSCTRL_VREF_TSEN; // Disable the temperature sensor  
   while( ADC->STATUS.bit.SYNCBUSY == 1 );  // Wait for synchronization of registers between the clock domains
   #endif
@@ -146,7 +146,7 @@ void TemperatureZero::setAveraging(uint8_t averaging) {
 // Reads temperature using internal ADC channel
 // Datasheet chapter 37.10.8 - Temperature Sensor Characteristics
 float TemperatureZero::readInternalTemperature() {
-  #ifdef SAMD21 // M0
+  #ifdef _SAMD21_ // M0
    uint16_t adcReading = readInternalTemperatureRaw();
    return raw2temp(adcReading);
    #endif
@@ -168,14 +168,11 @@ void TemperatureZero::disableDebugging(void) {
 }
 #endif
 
-#define INT1V_DIVIDER_1000                1000.0
-#define ADC_12BIT_FULL_SCALE_VALUE_FLOAT  4095.0
-
 
 // Get all factory calibration parameters and process them
 // This includes both the temperature sensor calibration as well as the 1v reference calibration
 void TemperatureZero::getFactoryCalibration() {
-  #ifdef SAMD21 // M0
+  #ifdef _SAMD21_ // M0
    // Factory room temperature readings
   uint8_t roomInteger = (*(uint32_t*)FUSES_ROOM_TEMP_VAL_INT_ADDR & FUSES_ROOM_TEMP_VAL_INT_Msk) >> FUSES_ROOM_TEMP_VAL_INT_Pos;
   uint8_t roomDecimal = (*(uint32_t*)FUSES_ROOM_TEMP_VAL_DEC_ADDR & FUSES_ROOM_TEMP_VAL_DEC_Msk) >> FUSES_ROOM_TEMP_VAL_DEC_Pos;
@@ -280,7 +277,7 @@ void TemperatureZero::disableUserCalibration() {
 // Get raw 12 bit adc reading
 uint16_t TemperatureZero::readInternalTemperatureRaw() {
 
-#ifdef SAMD21 // M0
+#ifdef _SAMD21_ // M0
   // Save ADC settings
   uint16_t oldReadResolution = ADC->CTRLB.reg;
   uint16_t oldSampling = ADC->SAMPCTRL.reg;

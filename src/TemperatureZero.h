@@ -20,6 +20,9 @@
 #define TZ_AVERAGING_128 7
 #define TZ_AVERAGING_256 8
 
+#define INT1V_DIVIDER_1000                1000.0
+#define ADC_12BIT_FULL_SCALE_VALUE_FLOAT  4095.0
+
 class TemperatureZero
 {
   public:
@@ -39,7 +42,7 @@ class TemperatureZero
     void enableUserCalibration();
     void disableUserCalibration();
     uint16_t readInternalTemperatureRaw();
-#ifdef SAMD21
+#ifdef _SAMD21_
     float raw2temp (uint16_t adcReading);
 #endif
 #ifdef __SAMD51__
